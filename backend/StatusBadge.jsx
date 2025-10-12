@@ -1,53 +1,61 @@
 // StatusBadge.jsx
-export default function StatusBadge({ status }) {
-  const s = (status || '').toLowerCase();
+import React from "react";
 
-  const config = {
-    approved: {
-      bgColor: 'rgba(16, 185, 129, 0.15)',
-      textColor: '#059669',
-      dotColor: '#10b981',
-      label: 'Approved',
-    },
-    rejected: {
-      bgColor: 'rgba(239, 68, 68, 0.15)',
-      textColor: '#dc2626',
-      dotColor: '#ef4444',
-      label: 'Rejected',
-    },
-    pending: {
-      bgColor: 'rgba(245, 158, 11, 0.15)',
-      textColor: '#d97706',
-      dotColor: '#f59e0b',
-      label: 'Pending',
-    },
-  }[s] || {
-    bgColor: 'rgba(107, 114, 128, 0.15)',
-    textColor: '#6b7280',
-    dotColor: '#9ca3af',
-    label: status,
-  };
+export default function StatusBadge({ status }) {
+  const s = (status || "").toLowerCase();
+
+  const config =
+    s === "approved"
+      ? {
+          bgColor: "rgba(16,185,129,0.15)",
+          textColor: "#059669",
+          dotColor: "#10b981",
+          label: "Approved",
+        }
+      : s === "rejected"
+      ? {
+          bgColor: "rgba(239,68,68,0.15)",
+          textColor: "#dc2626",
+          dotColor: "#ef4444",
+          label: "Rejected",
+        }
+      : s === "pending"
+      ? {
+          bgColor: "rgba(245,158,11,0.15)",
+          textColor: "#d97706",
+          dotColor: "#f59e0b",
+          label: "Pending",
+        }
+      : {
+          bgColor: "rgba(11,63,122,0.06)",
+          textColor: "#064A8E",
+          dotColor: "#9ca3af",
+          label: status || "Unknown",
+        };
 
   return (
     <span
-      className="d-inline-flex align-items-center gap-2 px-3 py-1 shadow-sm"
+      className="d-inline-flex align-items-center px-3 py-1"
       style={{
         color: config.textColor,
         backgroundColor: config.bgColor,
-        borderRadius: '16px',
+        borderRadius: "16px",
+        fontFamily: "'Inter', system-ui, sans-serif",
+        fontWeight: 600,
       }}
     >
       <span
-        className="rounded-circle d-inline-block"
         style={{
-          width: '8px',
-          height: '8px',
+          width: 8,
+          height: 8,
           backgroundColor: config.dotColor,
+          borderRadius: "50%",
+          display: "inline-block",
+          marginRight: 6,
+          boxShadow: "0 0 6px rgba(0,0,0,0.04)",
         }}
-      ></span>
-      <span className="fw-medium" style={{ fontSize: '0.875rem' }}>
-        {config.label}
-      </span>
+      />
+      <span style={{ fontSize: "0.9rem" }}>{config.label}</span>
     </span>
   );
 }
