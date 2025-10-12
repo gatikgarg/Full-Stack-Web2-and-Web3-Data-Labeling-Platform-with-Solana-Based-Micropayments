@@ -1,89 +1,141 @@
 // SubscriptionDashboard.jsx
-import { useState } from 'react';
-import StatusBadge from './StatusBadge';
-
-const mockSubscriptions = [
-  { id: '1', reportDomain: 'Financial Performance Report Q4 2024', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Approved', department: 'Finance Department' },
-  { id: '2', reportDomain: 'Market Analysis Report - Asia Pacific', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Pending', department: 'Finance Department' },
-  { id: '3', reportDomain: 'Risk Assessment Report 2024', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Approved', department: 'Finance Department' },
-  { id: '4', reportDomain: 'Customer Satisfaction Survey Results', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Rejected', department: 'Finance Department' },
-  { id: '5', reportDomain: 'Technology Infrastructure Review', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Pending', department: 'Finance Department' },
-  { id: '6', reportDomain: 'HR Workforce Planning Report', organization: 'Standard Chartered Bank', requestDate: '2024-03-15', status: 'Approved', department: 'Finance Department' }
-];
+import React, { useState } from "react";
+import StatusBadge from "../components/StatusBadge";
 
 export default function SubscriptionDashboard() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  const filteredSubscriptions = mockSubscriptions.filter(sub => {
+  const mockSubscriptions = [
+    { id: "1", reportDomain: "Financial Performance Report Q4 2024", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Approved", department: "Finance Department" },
+    { id: "2", reportDomain: "Market Analysis Report - Asia Pacific", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Pending", department: "Finance Department" },
+    { id: "3", reportDomain: "Risk Assessment Report 2024", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Approved", department: "Finance Department" },
+    { id: "4", reportDomain: "Customer Satisfaction Survey Results", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Rejected", department: "Finance Department" },
+    { id: "5", reportDomain: "Technology Infrastructure Review", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Pending", department: "Finance Department" },
+    { id: "6", reportDomain: "HR Workforce Planning Report", organization: "Standard Chartered Bank", requestDate: "2024-03-15", status: "Approved", department: "Finance Department" },
+  ];
+
+  const filtered = mockSubscriptions.filter((sub) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      searchQuery === '' ||
-      sub.reportDomain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.organization.toLowerCase().includes(searchQuery.toLowerCase());
+      q === "" ||
+      sub.reportDomain.toLowerCase().includes(q) ||
+      sub.organization.toLowerCase().includes(q);
     const matchesStatus =
-      statusFilter === 'All' ||
+      statusFilter === "All" ||
       sub.status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
+  const primaryGradient =
+    "linear-gradient(135deg, #0473EA 0%, #0A5BB8 50%, #064A8E 100%)";
+  const subtitleBlue = "#4A89C7"; // darker text colour
+
   return (
     <div
-      className="min-vh-100"
       style={{
-        background: 'linear-gradient(135deg, #e0f2f1 0%, #b2ebf2 50%, #80deea 100%)',
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Inter', system-ui, sans-serif",
+        background:
+          "linear-gradient(180deg, rgba(4,115,234,0.06) 0%, rgba(10,91,184,0.03) 50%, rgba(6,74,142,0.02) 100%)",
+        padding: 32,
+        minHeight: "100vh",
       }}
     >
-      <main className="container py-4 py-md-5" style={{ maxWidth: '1200px' }}>
-        <div className="bg-white shadow-lg p-4 mb-4" style={{ borderRadius: '24px' }}>
-          <h1
-            className="fw-bold mb-4"
-            style={{ fontSize: '2rem', color: '#0d47a1' }}
-          >
-            Subscription Status
-          </h1>
+      <main style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div
+          style={{
+            borderRadius: 20,
+            overflow: "hidden",
+            background: "#fff",
+            boxShadow: "0 8px 30px rgba(6,74,142,0.08)",
+          }}
+        >
+          <div style={{ height: 8, background: primaryGradient }} />
 
-          {/* Search and Filters */}
-          <div className="row g-3 align-items-center mb-4">
-            <div className="col-12 col-md-6">
-              <div className="position-relative">
-                <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style={{ fontSize: '1.1rem' }}></i>
+          <div style={{ padding: "22px 28px" }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "1.9rem",
+                color: "#064A8E",
+                fontWeight: 700,
+              }}
+            >
+              Subscription Status
+            </h1>
+            <p
+              style={{
+                margin: "8px 0 18px",
+                color: subtitleBlue,
+                fontSize: "0.95rem",
+              }}
+            >
+              Manage your report subscriptions and review their approval status
+            </p>
+
+            {/* Search and Filter Buttons */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 16,
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ flex: "1 1 300px", position: "relative" }}>
+                <i
+                  className="bi bi-search"
+                  style={{
+                    position: "absolute",
+                    left: 14,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#9fbde8",
+                  }}
+                ></i>
                 <input
                   type="search"
-                  className="form-control ps-5 border-0 shadow-sm"
                   placeholder="Search reports..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
-                    height: '48px',
-                    borderRadius: '24px',
-                    backgroundColor: '#f8f9fa'
+                    width: "100%",
+                    height: 48,
+                    borderRadius: 28,
+                    paddingLeft: 44,
+                    border: "1px solid #e7f0ff",
+                    backgroundColor: "#fbfdff",
                   }}
                 />
               </div>
-            </div>
 
-            <div className="col-12 col-md-6">
-              <div className="d-flex gap-2 justify-content-md-end flex-wrap">
-                {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["All", "Pending", "Approved", "Rejected"].map((status) => (
                   <button
                     key={status}
-                    className={`btn ${
-                      statusFilter === status
-                        ? status === 'Approved'
-                          ? 'btn-success'
-                          : status === 'Pending'
-                          ? 'btn-warning'
-                          : status === 'Rejected'
-                          ? 'btn-danger'
-                          : 'btn-primary'
-                        : 'btn-light'
-                    } shadow-sm`}
                     onClick={() => setStatusFilter(status)}
                     style={{
-                      minWidth: '90px',
-                      borderRadius: '20px',
-                      fontWeight: '500'
+                      minWidth: 90,
+                      borderRadius: 20,
+                      fontWeight: 500,
+                      border: "none",
+                      padding: "8px 16px",
+                      cursor: "pointer",
+                      background:
+                        statusFilter === status
+                          ? status === "Approved"
+                            ? "#10b981"
+                            : status === "Pending"
+                            ? "#f59e0b"
+                            : status === "Rejected"
+                            ? "#ef4444"
+                            : "#0473EA"
+                          : "#f1f5f9",
+                      color:
+                        statusFilter === status
+                          ? "white"
+                          : "rgba(6,74,142,0.8)",
                     }}
                   >
                     {status}
@@ -91,44 +143,57 @@ export default function SubscriptionDashboard() {
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Subscriptions Table */}
-          {filteredSubscriptions.length === 0 ? (
-            <div className="text-center py-5">
-              <div
-                className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '80px', height: '80px' }}
-              >
-                <i className="bi bi-inbox fs-1 text-muted"></i>
+            {/* Table Section */}
+            {filtered.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <div
+                  style={{
+                    width: 88,
+                    height: 88,
+                    margin: "0 auto 12px",
+                    borderRadius: "50%",
+                    background: "#f3fbff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <i
+                    className="bi bi-inbox"
+                    style={{ fontSize: "2rem", color: "#9fbde8" }}
+                  />
+                </div>
+                <p style={{ color: "#7a8fae" }}>No subscriptions yet.</p>
               </div>
-              <p className="text-muted mb-0">No subscriptions yet.</p>
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="table align-middle mb-0">
+            ) : (
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 14,
+                }}
+              >
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e9ecef' }}>
+                  <tr style={{ borderBottom: "2px solid #eef6ff" }}>
                     <th
-                      className="fw-semibold text-uppercase border-0"
                       style={{
-                        fontSize: '0.75rem',
-                        letterSpacing: '0.05em',
-                        paddingTop: '1rem',
-                        paddingBottom: '1rem',
-                        color: '#6c757d'
+                        textAlign: "left",
+                        padding: "1rem 0",
+                        fontSize: 12,
+                        color: "#7d8fa8",
+                        textTransform: "uppercase",
                       }}
                     >
                       Report Domain
                     </th>
                     <th
-                      className="fw-semibold text-uppercase border-0 text-end"
                       style={{
-                        fontSize: '0.75rem',
-                        letterSpacing: '0.05em',
-                        paddingTop: '1rem',
-                        paddingBottom: '1rem',
-                        color: '#6c757d'
+                        textAlign: "right",
+                        padding: "1rem 0",
+                        fontSize: 12,
+                        color: "#7d8fa8",
+                        textTransform: "uppercase",
                       }}
                     >
                       Status
@@ -136,52 +201,74 @@ export default function SubscriptionDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSubscriptions.map((subscription, index) => (
+                  {filtered.map((sub) => (
                     <tr
-                      key={subscription.id}
-                      className="hover-elevate transition"
+                      key={sub.id}
                       style={{
-                        borderBottom:
-                          index === filteredSubscriptions.length - 1
-                            ? 'none'
-                            : '1px solid #f1f3f5',
-                        cursor: 'pointer'
+                        borderBottom: "1px solid #f1f5fb",
+                        cursor: "pointer",
                       }}
                     >
-                      <td className="py-3 border-0">
-                        <div>
-                          <div className="fw-medium mb-1">
-                            {subscription.reportDomain}
-                          </div>
-                          <div className="d-flex flex-wrap gap-2 align-items-center">
-                            <span className="badge bg-light text-dark border-0" style={{ borderRadius: '12px', fontWeight: '500' }}>
-                              <i className="bi bi-building me-1"></i>
-                              {subscription.organization}
-                            </span>
-                            <span className="badge bg-light text-dark border-0" style={{ borderRadius: '12px', fontWeight: '500' }}>
-                              <i className="bi bi-calendar3 me-1"></i>
-                              {new Date(subscription.requestDate).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </span>
-                            <span className="badge bg-light text-dark border-0" style={{ borderRadius: '12px', fontWeight: '500' }}>
-                              <i className="bi bi-briefcase me-1"></i>
-                              {subscription.department}
-                            </span>
-                          </div>
+                      <td style={{ padding: "12px 0" }}>
+                        <div style={{ fontWeight: 600, color: "#0b3f7a" }}>
+                          {sub.reportDomain}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                            marginTop: 4,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: "#f6fbff",
+                              color: "#064A8E",
+                              padding: "4px 8px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            {sub.organization}
+                          </span>
+                          <span
+                            style={{
+                              background: "#f6fbff",
+                              color: "#064A8E",
+                              padding: "4px 8px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            {new Date(sub.requestDate).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )}
+                          </span>
+                          <span
+                            style={{
+                              background: "#f6fbff",
+                              color: "#064A8E",
+                              padding: "4px 8px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            {sub.department}
+                          </span>
                         </div>
                       </td>
-                      <td className="text-end py-3 border-0">
-                        <StatusBadge status={subscription.status} />
+                      <td style={{ textAlign: "right" }}>
+                        <StatusBadge status={sub.status} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
     </div>
