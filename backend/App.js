@@ -1,5 +1,6 @@
 // App.js
-import SubscriptionDashboard from './SubscriptionDashboard';
+import React from "react";
+import SubscriptionDashboard from "./pages/SubscriptionDashboard";
 
 function App() {
   return <SubscriptionDashboard />;
