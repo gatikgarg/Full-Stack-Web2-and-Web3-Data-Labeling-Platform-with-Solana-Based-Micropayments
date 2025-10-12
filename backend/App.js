@@ -1,4 +1,5 @@
-import SubscriptionDashboard from './pages/SubscriptionDashboard';
+// App.js
+import SubscriptionDashboard from './SubscriptionDashboard';
 
 function App() {
   return <SubscriptionDashboard />;
