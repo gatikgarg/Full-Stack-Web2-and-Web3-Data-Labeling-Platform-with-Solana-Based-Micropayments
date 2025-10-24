@@ -214,3 +214,52 @@
   .landing-root .decor-left::before,
   .landing-root .decor-left::after { display: none; } /* hide accent lines on very small screens */
 }
+
+/* --- Navbar right links (About / Contact) --- */
+/* small thin lowercase style to match the screenshot */
+.landing-root .nav-right {
+  align-items: center;
+  gap: 1rem;
+}
+
+/* individual link style */
+.landing-root .nav-link {
+  font-family: 'Mangueira', 'Poppins', 'Nunito', sans-serif;
+  font-weight: 300;                 /* thin look */
+  text-transform: none;             /* keep 'About us' / 'Contact us' casing as in image */
+  font-size: 0.95rem;
+  color: rgba(75, 85, 99, 1);       /* muted grey similar to brand-text */
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.4rem;
+  transition: color .15s ease, transform .08s ease;
+}
+
+/* hover / focus */
+.landing-root .nav-link:hover,
+.landing-root .nav-link:focus {
+  color: var(--sc-blue-dark);
+  text-decoration: none;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* optional smaller visual weight for 'About us' exactly like screenshot (lowercase feel) */
+.landing-root .about-link {
+  /* keep lowercase appearance; user can change if they want capitalized text */
+}
+
+/* tighten spacing on small screens so nav doesn't overflow */
+@media (max-width: 768px) {
+  .landing-root .nav-right {
+    gap: 0.5rem;
+  }
+  .landing-root .nav-link {
+    font-size: 0.88rem;
+  }
+}
+
+/* if container uses very small screens, stack nav items or hide them behind a menu in future */
+@media (max-width: 480px) {
+  .landing-root .nav-right { display: none; } /* temporary — show/hide as you prefer */
+}
