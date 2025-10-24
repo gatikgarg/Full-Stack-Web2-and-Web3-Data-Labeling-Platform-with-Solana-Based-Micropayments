@@ -28,11 +28,31 @@ const StartLandingPage = ({ navigate }) => {
       <div className="foreground d-flex flex-column min-vh-100">
         <header className="px-3 pt-0">
           <nav className="top-nav container-fluid bg-light rounded-btm">
-            <div className="container py-3">
+            <div className="container py-3 d-flex align-items-center">
               <div className="d-flex align-items-center">
                 <img src="/sc_logo2.png" alt="Standard Chartered" className="sc-logo" />
                 <div className="divider mx-3" />
                 <span className="brand-text">RW TOOL</span>
+              </div>
+
+              {/* Right side nav links */}
+              <div className="nav-right ms-auto d-flex align-items-center gap-3">
+                <a
+                  className="nav-link about-link"
+                  href="https://www.sc.com/en/about/who-we-are/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  About us
+                </a>
+                <a
+                  className="nav-link contact-link"
+                  href="https://www.sc.com/en/contact-us/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Contact us
+                </a>
               </div>
             </div>
           </nav>
