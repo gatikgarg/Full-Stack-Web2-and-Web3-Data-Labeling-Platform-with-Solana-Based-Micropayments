@@ -1,128 +1,232 @@
-import axios from 'axios';
+package com.rwtool.service;
 
-const API_BASE_URL = 'http://localhost:8080/api';
+import com.rwtool.dto.ApprovalDecisionDTO;
+import com.rwtool.dto.SubscriptionRequestDTO;
+import com.rwtool.model.SubscriptionRequest;
+import com.rwtool.model.User;
+import com.rwtool.repository.SubscriptionRequestRepository;
+import com.rwtool.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-// Create an axios instance and attach JWT from localStorage if present
-const api = axios.create({ baseURL: API_BASE_URL });
-api.interceptors.request.use((config) => {
-    const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('token'))
-        || (typeof localStorage !== 'undefined' && localStorage.getItem('token'))
-        || null;
-    if (token) {
-        config.headers = config.headers || {};
-        config.headers['Authorization'] = `Bearer ${token}`;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+// <<< ADDED: imports for notifications
+import com.rwtool.model.UserNotification;
+import com.rwtool.model.User.Role;
+import com.rwtool.service.UserNotificationService;
+// >>> ADDED
+
+@Service
+public class SubscriptionRequestService {
+
+    @Autowired
+    private SubscriptionRequestRepository subscriptionRequestRepository;
+
+    @Autowired
+    private UserGroupService userGroupService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // <<< ADDED: inject UserNotificationService
+    @Autowired
+    private UserNotificationService userNotificationService;
+    // >>> ADDED
+
+    public List<SubscriptionRequest> getAllRequests() {
+        return subscriptionRequestRepository.findAll();
     }
-    return config;
-});
 
-const subscriptionService = {
-    // Get all subscription requests (admin)
-    getAllRequests: async () => {
-        try {
-            const response = await api.get(`/subscriptions`);
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching subscription requests:', error);
-            throw error;
-        }
-    },
+    public List<SubscriptionRequest> getPendingRequests() {
+        return subscriptionRequestRepository.findByStatus("PENDING");
+    }
 
-    // Get pending requests (admin)
-    getPendingRequests: async () => {
-        try {
-            const response = await api.get(`/subscriptions/pending`);
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching pending requests:', error);
-            throw error;
-        }
-    },
+    public List<SubscriptionRequest> getRequestsByUser(String userEmail) {
+        return subscriptionRequestRepository.findByUserEmailOrderByRequestedDateDesc(userEmail);
+    }
 
-    // Get requests by user email (user)
-    getRequestsByUser: async (email) => {
-        try {
-            const response = await api.get(`/subscriptions/user/${encodeURIComponent(email)}`);
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching user requests:', error);
-            throw error;
-        }
-    },
+    public SubscriptionRequest getRequestById(String id) {
+        return subscriptionRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Subscription request not found with id: " + id));
+    }
 
-    // Create new subscription request (user)
-    createRequest: async (requestData) => {
-        try {
-            const response = await api.post(`/subscriptions`, requestData);
-            return response.data;
-        } catch (error) {
-            console.error('Error creating subscription request:', error);
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data);
+    @Transactional
+    public SubscriptionRequest createRequest(SubscriptionRequestDTO requestDTO) {
+        // Resolve current user's email from JWT/SecurityContext (fallback to DTO for compatibility)
+        String currentEmail = null;
+        Authentication auth = SecurityContextHolder.getContext() != null
+                ? SecurityContextHolder.getContext().getAuthentication()
+                : null;
+        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
+            Object principal = auth.getPrincipal();
+            // principal may be a String (username) or a UserDetails
+            if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) {
+                currentEmail = ud.getUsername();
+            } else if (principal instanceof String s) {
+                // Spring may set "anonymousUser" as principal when endpoint is permitted
+                currentEmail = "anonymousUser".equalsIgnoreCase(s) ? null : s;
             }
-            throw error;
         }
-    },
-
-    // Approve request (admin)
-    approveRequest: async (requestId) => {
-        try {
-            const response = await api.put(`/subscriptions/${requestId}/approve`);
-            return response.data;
-        } catch (error) {
-            console.error('Error approving request:', error);
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data);
-            }
-            throw error;
+        if (currentEmail == null || currentEmail.isBlank()) {
+            currentEmail = requestDTO.getUserEmail();
         }
-    },
 
-    // Reject request (admin)
-    rejectRequest: async (requestId, rejectionReason) => {
-        try {
-            const response = await api.put(
-                `/subscriptions/${requestId}/reject`,
-                { rejectionReason }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error rejecting request:', error);
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data);
-            }
-            throw error;
+        // Check if user already has a pending request for this domain
+        Optional<SubscriptionRequest> existingRequest = subscriptionRequestRepository
+                .findByUserEmailAndDomainIdAndStatus(
+                        currentEmail,
+                        requestDTO.getDomainId(),
+                        "PENDING"
+                );
+
+        if (existingRequest.isPresent()) {
+            throw new RuntimeException("You already have a pending request for this domain");
         }
-    },
 
-    // Review request with decision (admin)
-    reviewRequest: async (requestId, action, rejectionReason = null) => {
-        try {
-            const response = await api.put(
-                `/subscriptions/${requestId}/review`,
-                { action, rejectionReason }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error reviewing request:', error);
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data);
-            }
-            throw error;
+        // Check if user already has approved access
+        Optional<SubscriptionRequest> approvedRequest = subscriptionRequestRepository
+                .findByUserEmailAndDomainIdAndStatus(
+                        currentEmail,
+                        requestDTO.getDomainId(),
+                        "APPROVED"
+                );
+
+        if (approvedRequest.isPresent()) {
+            throw new RuntimeException("You already have approved access to this domain");
         }
-    },
 
-    // Cancel request (user)
-    cancelRequest: async (requestId, userEmail) => {
+        // Populate authoritative user info from Users table (signup)
+        final String emailLookup = currentEmail;
+        User user = userRepository.findByEmail(emailLookup)
+                .orElseThrow(() -> new RuntimeException("User not found for email: " + emailLookup));
+
+        SubscriptionRequest request = new SubscriptionRequest();
+        request.setId(UUID.randomUUID().toString());
+        request.setDomainId(requestDTO.getDomainId());
+        request.setDomainName(requestDTO.getDomainName());
+        request.setRequestReason(requestDTO.getRequestReason());
+        request.setUserName(user.getFullName());
+        request.setUserEmail(user.getEmail());
+        request.setUserDepartment(user.getDomain());
+        request.setUserRole(user.getRole() != null ? user.getRole().name() : null);
+        request.setStatus("PENDING");
+        request.setRequestedDate(LocalDateTime.now());
+
+        // <<< CHANGED: capture saved and notify admins about new request
+        SubscriptionRequest saved = subscriptionRequestRepository.save(request);
+
+        List<User> admins = userRepository.findAllByRole(Role.ADMIN);
+        for (User admin : admins) {
+            UserNotification n = new UserNotification();
+            n.setUserId(admin.getEmail());
+            n.setType("subscription");
+            n.setTitle("New Subscription Request");
+            n.setMessage(saved.getUserEmail() + " requested access to " + saved.getDomainName());
+            n.setRead(false);
+            userNotificationService.save(n);
+        }
+
+        return saved;
+        // >>> CHANGED
+    }
+
+    @Transactional
+    public SubscriptionRequest approveRequest(String requestId) {
+        SubscriptionRequest request = getRequestById(requestId);
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Only pending requests can be approved");
+        }
+
+        request.setStatus("APPROVED");
+        request.setReviewedDate(LocalDateTime.now());
+        request.setRejectionReason(null);
+
+        // Auto-add user to the domain's user group
         try {
-            await api.delete(`/subscriptions/${requestId}/cancel?userEmail=${encodeURIComponent(userEmail)}`);
-        } catch (error) {
-            console.error('Error cancelling request:', error);
-            if (error.response && error.response.data) {
-                throw new Error(error.response.data);
+            userGroupService.addUserToGroupByDomain(request.getUserEmail(), request.getDomainName());
+        } catch (Exception e) {
+            // Log error but don't fail the approval
+            System.err.println("Failed to add user to group: " + e.getMessage());
+        }
+
+        // <<< CHANGED: capture saved and notify requesting user (approved)
+        SubscriptionRequest saved = subscriptionRequestRepository.save(request);
+
+        UserNotification n = new UserNotification();
+        n.setUserId(saved.getUserEmail());
+        n.setType("accepted");
+        n.setTitle("Request Approved");
+        n.setMessage("Access granted to " + saved.getDomainName());
+        n.setRead(false);
+        userNotificationService.save(n);
+
+        return saved;
+        // >>> CHANGED
+    }
+
+    @Transactional
+    public SubscriptionRequest rejectRequest(String requestId, String rejectionReason) {
+        SubscriptionRequest request = getRequestById(requestId);
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Only pending requests can be rejected");
+        }
+
+        request.setStatus("REJECTED");
+        request.setReviewedDate(LocalDateTime.now());
+        request.setRejectionReason(rejectionReason);
+
+        // <<< CHANGED: capture saved and notify requesting user (rejected)
+        SubscriptionRequest saved = subscriptionRequestRepository.save(request);
+
+        UserNotification n = new UserNotification();
+        n.setUserId(saved.getUserEmail());
+        n.setType("rejected");
+        n.setTitle("Request Rejected");
+        n.setMessage(rejectionReason != null ? rejectionReason : "Request rejected");
+        n.setRead(false);
+        userNotificationService.save(n);
+
+        return saved;
+        // >>> CHANGED
+    }
+
+    @Transactional
+    public SubscriptionRequest processRequest(String requestId, ApprovalDecisionDTO decision) {
+        if ("APPROVE".equalsIgnoreCase(decision.getAction())) {
+            return approveRequest(requestId);
+        } else if ("REJECT".equalsIgnoreCase(decision.getAction())) {
+            String reason = decision.getRejectionReason();
+            if (reason == null || reason.trim().isEmpty()) {
+                reason = "Request rejected by admin";
             }
-            throw error;
+            return rejectRequest(requestId, reason);
+        } else {
+            throw new RuntimeException("Invalid action. Must be APPROVE or REJECT");
         }
     }
-};
 
-export default subscriptionService;
+    @Transactional
+    public void cancelRequest(String requestId, String userEmail) {
+        SubscriptionRequest request = getRequestById(requestId);
+
+        if (!request.getUserEmail().equals(userEmail)) {
+            throw new RuntimeException("You can only cancel your own requests");
+        }
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Only pending requests can be cancelled");
+        }
+
+        subscriptionRequestRepository.delete(request);
+    }
+}
