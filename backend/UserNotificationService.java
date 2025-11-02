@@ -1,63 +1,66 @@
-package com.rwtool.service;
+package com.rwtool.model;
 
-import com.rwtool.model.UserNotification;
-import com.rwtool.repository.UserNotificationRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
-import java.util.List;
-import java.util.Optional;
+@Entity
+@Table(name = "notifications")
+public class UserNotification {
 
-@Service
-public class UserNotificationService {
+    @Id
+    @Column(length = 36)
+    private String id;
 
-    private final UserNotificationRepository repo;
+    @Column(name = "user_id", nullable = false)
+    private String userId; // typically the user email
 
-    public UserNotificationService(UserNotificationRepository repo) {
-        this.repo = repo;
-    }
+    @Column(name = "type", nullable = false)
+    private String type; // accepted, rejected, file, subscription
 
-    // List notifications for a user (sorted by newest first)
-    public List<UserNotification> listForUser(String userId) {
-        return repo.findByUserIdOrderByCreatedAtDesc(userId);
-    }
+    @Column(name = "title", nullable = false)
+    private String title;
 
-    public Optional<UserNotification> get(String id) {
-        return repo.findById(id);
-    }
+    @Column(name = "message", length = 2000)
+    private String message;
 
-    // Create or update a notification
-    public UserNotification save(UserNotification n) {
-        return repo.save(n);
-    }
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-    // Mark a single notification as read
-    public void markRead(String id) {
-        repo.findById(id).ifPresent(n -> {
-            n.setRead(true);
-            repo.save(n);
-        });
-    }
+    @Column(name = "is_read", nullable = false)
+    private boolean read;
 
-    // Mark all notifications as read for a user
-    @Transactional
-    public void markAllRead(String userId) {
-        List<UserNotification> list = repo.findByUserIdOrderByCreatedAtDesc(userId);
-        for (UserNotification n : list) {
-            if (!n.isRead()) {
-                n.setRead(true);
-            }
+    public UserNotification() {}
+
+    @PrePersist
+    public void prePersist() {
+        if (this.id == null || this.id.isEmpty()) {
+            this.id = UUID.randomUUID().toString();
         }
-        repo.saveAll(list);
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
-    // Delete a single notification
-    public void delete(String id) {
-        repo.deleteById(id);
-    }
+    // getters/setters
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    // Clear all notifications for a user, returns number deleted
-    public long clearAll(String userId) {
-        return repo.deleteByUserId(userId);
-    }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public boolean isRead() { return read; }
+    public void setRead(boolean read) { this.read = read; }
 }
