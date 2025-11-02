@@ -18,11 +18,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// <<< ADDED: imports for notifications
+// ADDED (notifications)
 import com.rwtool.model.UserNotification;
 import com.rwtool.model.User.Role;
 import com.rwtool.service.UserNotificationService;
-// >>> ADDED
 
 @Service
 public class SubscriptionRequestService {
@@ -36,10 +35,9 @@ public class SubscriptionRequestService {
     @Autowired
     private UserRepository userRepository;
 
-    // <<< ADDED: inject UserNotificationService
+    // ADDED (notifications)
     @Autowired
     private UserNotificationService userNotificationService;
-    // >>> ADDED
 
     public List<SubscriptionRequest> getAllRequests() {
         return subscriptionRequestRepository.findAll();
@@ -60,18 +58,16 @@ public class SubscriptionRequestService {
 
     @Transactional
     public SubscriptionRequest createRequest(SubscriptionRequestDTO requestDTO) {
-        // Resolve current user's email from JWT/SecurityContext (fallback to DTO for compatibility)
+        // Resolve current user's email from JWT/SecurityContext (fallback to DTO)
         String currentEmail = null;
         Authentication auth = SecurityContextHolder.getContext() != null
                 ? SecurityContextHolder.getContext().getAuthentication()
                 : null;
         if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
             Object principal = auth.getPrincipal();
-            // principal may be a String (username) or a UserDetails
             if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) {
                 currentEmail = ud.getUsername();
             } else if (principal instanceof String s) {
-                // Spring may set "anonymousUser" as principal when endpoint is permitted
                 currentEmail = "anonymousUser".equalsIgnoreCase(s) ? null : s;
             }
         }
@@ -79,31 +75,20 @@ public class SubscriptionRequestService {
             currentEmail = requestDTO.getUserEmail();
         }
 
-        // Check if user already has a pending request for this domain
+        // Ensure no duplicate pending/approved
         Optional<SubscriptionRequest> existingRequest = subscriptionRequestRepository
-                .findByUserEmailAndDomainIdAndStatus(
-                        currentEmail,
-                        requestDTO.getDomainId(),
-                        "PENDING"
-                );
-
+                .findByUserEmailAndDomainIdAndStatus(currentEmail, requestDTO.getDomainId(), "PENDING");
         if (existingRequest.isPresent()) {
             throw new RuntimeException("You already have a pending request for this domain");
         }
 
-        // Check if user already has approved access
         Optional<SubscriptionRequest> approvedRequest = subscriptionRequestRepository
-                .findByUserEmailAndDomainIdAndStatus(
-                        currentEmail,
-                        requestDTO.getDomainId(),
-                        "APPROVED"
-                );
-
+                .findByUserEmailAndDomainIdAndStatus(currentEmail, requestDTO.getDomainId(), "APPROVED");
         if (approvedRequest.isPresent()) {
             throw new RuntimeException("You already have approved access to this domain");
         }
 
-        // Populate authoritative user info from Users table (signup)
+        // Build request from authoritative user record
         final String emailLookup = currentEmail;
         User user = userRepository.findByEmail(emailLookup)
                 .orElseThrow(() -> new RuntimeException("User not found for email: " + emailLookup));
@@ -120,7 +105,7 @@ public class SubscriptionRequestService {
         request.setStatus("PENDING");
         request.setRequestedDate(LocalDateTime.now());
 
-        // <<< CHANGED: capture saved and notify admins about new request
+        // Save and notify admins of new subscription request
         SubscriptionRequest saved = subscriptionRequestRepository.save(request);
 
         List<User> admins = userRepository.findAllByRole(Role.ADMIN);
@@ -135,7 +120,6 @@ public class SubscriptionRequestService {
         }
 
         return saved;
-        // >>> CHANGED
     }
 
     @Transactional
@@ -150,15 +134,14 @@ public class SubscriptionRequestService {
         request.setReviewedDate(LocalDateTime.now());
         request.setRejectionReason(null);
 
-        // Auto-add user to the domain's user group
+        // Best effort to add to group
         try {
             userGroupService.addUserToGroupByDomain(request.getUserEmail(), request.getDomainName());
         } catch (Exception e) {
-            // Log error but don't fail the approval
             System.err.println("Failed to add user to group: " + e.getMessage());
         }
 
-        // <<< CHANGED: capture saved and notify requesting user (approved)
+        // Save and notify requesting user (approved)
         SubscriptionRequest saved = subscriptionRequestRepository.save(request);
 
         UserNotification n = new UserNotification();
@@ -170,7 +153,6 @@ public class SubscriptionRequestService {
         userNotificationService.save(n);
 
         return saved;
-        // >>> CHANGED
     }
 
     @Transactional
@@ -185,7 +167,7 @@ public class SubscriptionRequestService {
         request.setReviewedDate(LocalDateTime.now());
         request.setRejectionReason(rejectionReason);
 
-        // <<< CHANGED: capture saved and notify requesting user (rejected)
+        // Save and notify requesting user (rejected)
         SubscriptionRequest saved = subscriptionRequestRepository.save(request);
 
         UserNotification n = new UserNotification();
@@ -197,7 +179,6 @@ public class SubscriptionRequestService {
         userNotificationService.save(n);
 
         return saved;
-        // >>> CHANGED
     }
 
     @Transactional
