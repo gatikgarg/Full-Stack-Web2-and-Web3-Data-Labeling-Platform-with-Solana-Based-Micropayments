@@ -1,70 +1,74 @@
 package com.rwtool.controller;
 
-import com.rwtool.model.SubscriptionRequest;
-import com.rwtool.model.User;
 import com.rwtool.model.UserNotification;
-import com.rwtool.model.User.Role;
-import com.rwtool.repository.SubscriptionRequestRepository;
-import com.rwtool.repository.UserRepository;
 import com.rwtool.service.UserNotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/file-events")
+@RequestMapping("/api/notifications")
 @CrossOrigin(origins = "http://localhost:3000")
-public class FileEventController {
+public class NotificationController {
 
-    private final UserNotificationService userNotificationService;
-    private final UserRepository userRepository;
-    private final SubscriptionRequestRepository subscriptionRequestRepository;
+    private final UserNotificationService service;
 
-    public FileEventController(UserNotificationService userNotificationService,
-                               UserRepository userRepository,
-                               SubscriptionRequestRepository subscriptionRequestRepository) {
-        this.userNotificationService = userNotificationService;
-        this.userRepository = userRepository;
-        this.subscriptionRequestRepository = subscriptionRequestRepository;
+    public NotificationController(UserNotificationService service) {
+        this.service = service;
     }
 
-    @PostMapping("/new")
-    public ResponseEntity<?> newFile(@RequestBody Map<String, String> body) {
-        String folder = body.get("folder");
-        String fileName = body.get("fileName");
-        if (folder == null || fileName == null) {
-            return ResponseEntity.badRequest().body("folder and fileName are required");
-        }
+    @GetMapping
+    public ResponseEntity<List<UserNotification>> list(@RequestParam String userId) {
+        return ResponseEntity.ok(service.listForUser(userId));
+    }
 
-        String title = "New File Added";
-        String message = fileName + " added to " + folder;
+    @PostMapping("/{id}/read")
+    public ResponseEntity<Map<String, Object>> markRead(@PathVariable String id) {
+        service.markRead(id);
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "ok");
+        return ResponseEntity.ok(res);
+    }
 
-        // notify admins
-        List<User> admins = userRepository.findAllByRole(Role.ADMIN);
-        for (User admin : admins) {
-            UserNotification n = new UserNotification();
-            n.setUserId(admin.getEmail());
-            n.setType("file");
-            n.setTitle(title);
-            n.setMessage(message);
-            n.setRead(false);
-            userNotificationService.save(n);
-        }
+    @PostMapping("/read-all")
+    public ResponseEntity<Map<String, Object>> markAllRead(@RequestBody Map<String, String> body) {
+        String userId = body.get("userId");
+        service.markAllRead(userId);
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "ok");
+        return ResponseEntity.ok(res);
+    }
 
-        // notify subscribers with APPROVED status for this domain
-        List<SubscriptionRequest> approved = subscriptionRequestRepository.findByDomainNameAndStatus(folder, "APPROVED");
-        for (SubscriptionRequest sr : approved) {
-            UserNotification n = new UserNotification();
-            n.setUserId(sr.getUserEmail());
-            n.setType("file");
-            n.setTitle(title);
-            n.setMessage(message);
-            n.setRead(false);
-            userNotificationService.save(n);
-        }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable String id) {
+        service.delete(id);
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "ok");
+        return ResponseEntity.ok(res);
+    }
 
-        return ResponseEntity.ok(Map.of("status", "ok", "notifiedAdmins", admins.size(), "notifiedUsers", approved.size()));
+    @DeleteMapping
+    public ResponseEntity<Map<String, Object>> clearAll(@RequestParam String userId) {
+        long n = service.clearAll(userId);
+        Map<String, Object> res = new HashMap<>();
+        res.put("deleted", n);
+        return ResponseEntity.ok(res);
+    }
+
+    // Optional: endpoint to seed a notification for testing
+    @PostMapping
+    public ResponseEntity<UserNotification> create(@RequestBody Map<String, String> body) {
+        UserNotification n = new UserNotification();
+        n.setUserId(body.get("userId"));
+        n.setType(body.getOrDefault("type", "file"));
+        n.setTitle(body.getOrDefault("title", "Notification"));
+        n.setMessage(body.getOrDefault("message", ""));
+        n.setCreatedAt(LocalDateTime.now());
+        n.setRead(false);
+        return ResponseEntity.ok(service.save(n));
     }
 }
